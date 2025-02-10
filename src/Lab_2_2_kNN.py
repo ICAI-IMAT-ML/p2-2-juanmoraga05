@@ -102,7 +102,7 @@ class knn:
             distances = self.compute_distances(point)
             knn_indices = self.get_k_nearest_neighbors(distances)
             knn_labels = self.y_train[knn_indices]
-            
+
             # Calculamos la probabilidad para cada etiqueta
             row_prob = [np.sum(knn_labels == label) / self.k for label in unique_labels]
             probabilities.append(row_prob)
@@ -253,22 +253,25 @@ def evaluate_classification_metrics(y_true, y_pred, positive_label):
     y_pred_mapped = np.array([1 if label == positive_label else 0 for label in y_pred])
 
     # Confusion Matrix
-    # TODO
+    tn = np.sum((y_true_mapped == 0) & (y_pred_mapped == 0))
+    fp = np.sum((y_true_mapped == 0) & (y_pred_mapped == 1))
+    fn = np.sum((y_true_mapped == 1) & (y_pred_mapped == 0))
+    tp = np.sum((y_true_mapped == 1) & (y_pred_mapped == 1))
 
     # Accuracy
-    # TODO
+    accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
 
     # Precision
-    # TODO
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
 
     # Recall (Sensitivity)
-    # TODO
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
 
     # Specificity
-    # TODO
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
 
     # F1 Score
-    # TODO
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
 
     return {
         "Confusion Matrix": [tn, fp, fn, tp],
@@ -292,9 +295,9 @@ def plot_calibration_curve(y_true, y_probs, positive_label, n_bins=10):
     Args:
         y_true (array-like): True labels of the data. Can be binary or categorical.
         y_probs (array-like): Predicted probabilities for the positive class (positive_label).
-                            Expected values are in the range [0, 1].
+                              Expected values are in the range [0, 1].
         positive_label (int or str): The label that is considered the positive class.
-                                    This is used to map categorical labels to binary outcomes.
+                                     This is used to map categorical labels to binary outcomes.
         n_bins (int, optional): Number of bins to use for grouping predicted probabilities.
                                 Defaults to 10. Bins are equally spaced in the range [0, 1].
 
@@ -302,10 +305,38 @@ def plot_calibration_curve(y_true, y_probs, positive_label, n_bins=10):
         dict: A dictionary with the following keys:
             - "bin_centers": Array of the center values of each bin.
             - "true_proportions": Array of the fraction of positives in each bin
-
     """
-    # TODO
-    return {"bin_centers": bin_centers, "true_proportions": true_proportions}
+    y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
+    
+    bin_edges = np.linspace(0, 1, n_bins + 1)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
+
+    true_proportions = []
+    # For each bin, compute the fraction of positives
+    for i in range(n_bins):
+        # For the last bin include the right edge
+        if i == n_bins - 1:
+            indices = (y_probs >= bin_edges[i]) & (y_probs <= bin_edges[i+1])
+        else:
+            indices = (y_probs >= bin_edges[i]) & (y_probs < bin_edges[i+1])
+        
+        if np.sum(indices) > 0:
+            proportion = np.mean(y_true_mapped[indices])
+        else:
+            proportion = np.nan
+        true_proportions.append(proportion)
+    
+    # Plot the calibration curve
+    plt.figure(figsize=(6, 6))
+    plt.plot(bin_centers, true_proportions, marker="o", linestyle="-", label="Calibration Curve")
+    plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Perfect Calibration")
+    plt.xlabel("Mean Predicted Probability")
+    plt.ylabel("Fraction of Positives")
+    plt.title("Calibration Curve")
+    plt.legend()
+    plt.show()
+
+    return {"bin_centers": np.array(bin_centers), "true_proportions": np.array(true_proportions)}
 
 
 
@@ -334,7 +365,31 @@ def plot_probability_histograms(y_true, y_probs, positive_label, n_bins=10):
                 Array of predicted probabilities for the negative class.
 
     """
-    # TODO
+    y_true_mapped = np.array([1 if label == positive_label else 0 for label in y_true])
+
+    pos_probs = y_probs[y_true_mapped == 1]
+    neg_probs = y_probs[y_true_mapped == 0] 
+
+    bins = np.linspace(0, 1, n_bins + 1)
+
+    # Plot histogram for the positive class.
+    plt.figure(figsize=(12, 5))
+    
+    plt.subplot(1, 2, 1)
+    plt.hist(pos_probs, bins=bins, color='blue', alpha=0.7, edgecolor='black')
+    plt.xlabel("Predicted Probability")
+    plt.ylabel("Frequency")
+    plt.title("Histogram - Positive Class")
+    
+    # Plot histogram for the negative class.
+    plt.subplot(1, 2, 2)
+    plt.hist(neg_probs, bins=bins, color='red', alpha=0.7, edgecolor='black')
+    plt.xlabel("Predicted Probability")
+    plt.ylabel("Frequency")
+    plt.title("Histogram - Negative Class")
+    
+    plt.tight_layout()
+    plt.show()
 
     return {
         "array_passed_to_histogram_of_positive_class": y_probs[y_true_mapped == 1],
@@ -364,5 +419,28 @@ def plot_roc_curve(y_true, y_probs, positive_label):
             - "tpr": Array of True Positive Rates for each threshold.
 
     """
-    # TODO
+    # Define a set of thresholds to evaluate the classifier.
+    thresholds = np.linspace(0, 1, num=11)
+    tpr = []
+    fpr = []
+
+    for thresh in thresholds:
+        y_pred = np.where(y_probs >= thresh, positive_label, 0)
+
+        y_true_mapped = np.array([1 if label >= thresh else 0 for label in y_true])
+        metrics = evaluate_classification_metrics(y_true, y_pred, positive_label)
+
+    
+        tpr.append(metrics["Recall"])
+        fpr.append(1 - metrics["Specificity"])
+
+    # Plot the ROC curve.
+    plt.figure(figsize=(6, 6))
+    plt.plot(fpr, tpr, marker='.', label="ROC Curve")
+    plt.plot([0, 1], [0, 1], linestyle="--", color="gray", label="Random Classifier")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("(ROC) Curve")
+    plt.legend()
+    plt.show()
     return {"fpr": np.array(fpr), "tpr": np.array(tpr)}
