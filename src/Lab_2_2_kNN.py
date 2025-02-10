@@ -419,7 +419,7 @@ def plot_roc_curve(y_true, y_probs, positive_label):
             - "tpr": Array of True Positive Rates for each threshold.
 
     """
-    # Define a set of thresholds to evaluate the classifier.
+    # Define a set of thresholds to evaluate the classifier
     thresholds = np.linspace(0, 1, num=11)
     tpr = []
     fpr = []
