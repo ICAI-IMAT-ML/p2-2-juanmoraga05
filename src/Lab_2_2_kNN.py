@@ -19,7 +19,7 @@ def minkowski_distance(a, b, p=2):
         float: Minkowski distance between arrays a and b.
     """
 
-    # TODO
+    return np.sum(np.abs(a - b) ** p) ** (1 / p)
 
 
 # k-Nearest Neighbors Model
@@ -50,7 +50,17 @@ class knn:
             k (int, optional): Number of neighbors to use. Defaults to 5.
             p (int, optional): The degree of the Minkowski distance. Defaults to 2.
         """
-        # TODO
+        if X_train.shape[0] != y_train.shape[0]:
+            raise ValueError("Length of X_train and y_train must be equal.")
+        
+        if k <= 0 or not isinstance(k, int) or p <= 0 or not isinstance(p, int):
+            raise ValueError("k and p must be positive integers.")
+        
+        
+        self.k = k
+        self.p = p
+        self.x_train = X_train
+        self.y_train = y_train
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -62,7 +72,15 @@ class knn:
         Returns:
             np.ndarray: Predicted class labels.
         """
-        # TODO
+        predictions = []
+        for point in X:
+            distances = self.compute_distances(point)
+            knn_indices = self.get_k_nearest_neighbors(distances)
+            knn_labels = self.y_train[knn_indices]
+            label = self.most_common_label(knn_labels)
+            predictions.append(label)
+
+        return np.array(predictions)
 
     def predict_proba(self, X):
         """
@@ -76,8 +94,20 @@ class knn:
 
         Returns:
             np.ndarray: Predicted class probabilities.
-        """
-        # TODO
+        """    
+        probabilities = []
+        unique_labels = np.sort(np.unique(self.y_train))  # Etiquetas únicas en self.y_train
+        
+        for point in X:
+            distances = self.compute_distances(point)
+            knn_indices = self.get_k_nearest_neighbors(distances)
+            knn_labels = self.y_train[knn_indices]
+            
+            # Calculamos la probabilidad para cada etiqueta
+            row_prob = [np.sum(knn_labels == label) / self.k for label in unique_labels]
+            probabilities.append(row_prob)
+        
+        return np.array(probabilities)
 
     def compute_distances(self, point: np.ndarray) -> np.ndarray:
         """Compute distance from a point to every point in the training dataset
@@ -88,7 +118,11 @@ class knn:
         Returns:
             np.ndarray: distance from point to each point in the training dataset.
         """
-        # TODO
+        distances = []
+        for x in self.x_train:
+            distances.append(minkowski_distance(point, x, self.p))
+
+        return np.array(distances)
 
     def get_k_nearest_neighbors(self, distances: np.ndarray) -> np.ndarray:
         """Get the k nearest neighbors indices given the distances matrix from a point.
@@ -102,7 +136,7 @@ class knn:
         Hint:
             You might want to check the np.argsort function.
         """
-        # TODO
+        return np.argsort(distances)[:self.k]
 
     def most_common_label(self, knn_labels: np.ndarray) -> int:
         """Obtain the most common label from the labels of the k nearest neighbors
@@ -113,7 +147,8 @@ class knn:
         Returns:
             int: most common label
         """
-        # TODO
+        unique, counts = np.unique(knn_labels, return_counts=True)
+        return unique[np.argmax(counts)]
 
     def __str__(self):
         """
