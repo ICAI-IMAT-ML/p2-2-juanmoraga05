@@ -427,7 +427,6 @@ def plot_roc_curve(y_true, y_probs, positive_label):
     for thresh in thresholds:
         y_pred = np.where(y_probs >= thresh, positive_label, 0)
 
-        y_true_mapped = np.array([1 if label >= thresh else 0 for label in y_true])
         metrics = evaluate_classification_metrics(y_true, y_pred, positive_label)
 
     
